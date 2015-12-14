@@ -181,11 +181,10 @@ int color_temp = 0;
     delay(wait); 
     for(int pixel=0; pixel < strip.numPixels(); pixel++){
       strip.setPixelColor(strip.numPixels() -pixel-1, TriangleColorWheel(color_temp));
-      strip.show();
       color_temp++;
       if(color_temp == 60)color_temp = 0;
     }
-    
+    strip.show();
   }
 }
 
@@ -206,6 +205,7 @@ uint32_t Wheel(byte WheelPos) {
 
 //input: 0-9, output: 0-255
 uint8_t Brightness(uint8_t val){
+
   val = 9-val;
   if(val == 0)return 1;
   if(val == 1)return 5;
