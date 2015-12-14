@@ -28,14 +28,16 @@ bool oldState = HIGH;
 int showType = 0;
 
 void setup() {
+  Serial.begin(9600);
   pinMode(BUTTON_PIN, INPUT_PULLUP);
   strip.begin();
   strip.show(); // Initialize all pixels to 'off'
   showType = EEPROM.read(0);
+  Serial.println("START showType: "+String(showType));
 
 
 
-while(digitalRead(BUTTON_PIN) == HIGH); // remove after development
+//while(digitalRead(BUTTON_PIN) == HIGH); // remove after development
   
 }
 
@@ -63,22 +65,25 @@ void loop() {
 */
 
   if(digitalRead(BUTTON_PIN) == LOW){
-    strip.begin();
+     for(int i=0; i<strip.numPixels(); i++) {
+      strip.setPixelColor(i, strip.Color(0, 0, 0));
+     }
     strip.show(); // Initialize all pixels to 'off'
     delay(1000);
     if(digitalRead(BUTTON_PIN) == LOW){
       showType++;
-      if (showType > 10) showType=0;
+      if (showType > 7) showType=0;
       EEPROM.write(0, showType);
+      Serial.println("Saved showType: "+String(showType));
     }
   }
   startShow(showType);
 }
 
 void startShow(int i) {
-  i=10;
+ // i=10;
   switch(i){
-    case 0: colorWipe(strip.Color(0, 0, 0), 50);    // Black/off
+   /* case 0: colorWipe(strip.Color(0, 0, 0), 50);    // Black/off
             break;
     case 1: colorWipe(strip.Color(255, 0, 0), 50);  // Red
             break;
@@ -95,10 +100,22 @@ void startShow(int i) {
     case 7: rainbow(20);
             break;
     case 8: rainbowCycle(20);
+            break;*/
+    case 0:SawtoothColorChanger(100);
             break;
-    case 9: theaterChaseRainbow(50);
+    case 1:SawtoothColorChanger(75);
             break;
-    case 10:SawtoothColorChanger(100);
+    case 2:SawtoothColorChanger(50);
+            break;
+    case 3:SawtoothColorChanger(25);
+            break;
+    case 4: rainbowCycle(10);
+            break;
+    case 5: rainbowCycle(5);
+            break;
+    case 6: rainbowCycle(1);
+            break;
+    case 7: rainbowCycle(0);
             break;
     default:showType=0;
             break;
@@ -130,9 +147,9 @@ void rainbow(uint8_t wait) {
 void rainbowCycle(uint8_t wait) {
   uint16_t i, j;
 
-  for(j=0; j<256*5; j++) { // 5 cycles of all colors on wheel
+  for(j=0; j<256*1; j++) { // 5 cycles of all colors on wheel
     for(i=0; i< strip.numPixels(); i++) {
-      strip.setPixelColor(i, Wheel(((i * 256 / strip.numPixels()) + j) & 255));
+      strip.setPixelColor(strip.numPixels() -i -1, Wheel(((i * 256 / strip.numPixels()) + j) & 255));
     }
     strip.show();
     delay(wait);
@@ -159,7 +176,7 @@ void theaterChase(uint32_t c, uint8_t wait) {
 
 //Theatre-style crawling lights with rainbow effect
 void theaterChaseRainbow(uint8_t wait) {
-  for (int j=0; j < 256; j++) {     // cycle all 256 colors in the wheel
+  for (int j=0; j < 256; j+=5) {     // cycle all 256 colors in the wheel
     for (int q=0; q < 3; q++) {
       for (int i=0; i < strip.numPixels(); i=i+3) {
         strip.setPixelColor(i+q, Wheel( (i+j) % 255));    //turn every third pixel on
