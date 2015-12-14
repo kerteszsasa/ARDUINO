@@ -4,6 +4,7 @@
 // button once to start the first animation!
 
 #include <Adafruit_NeoPixel.h>
+#include <EEPROM.h>
 
 #define BUTTON_PIN   12    // Digital IO pin connected to the button.  This will be
                           // driven with a pull-up resistor so the switch should
@@ -30,7 +31,7 @@ void setup() {
   pinMode(BUTTON_PIN, INPUT_PULLUP);
   strip.begin();
   strip.show(); // Initialize all pixels to 'off'
-  //eeprom read
+  showType = EEPROM.read(0);
 
 
 
@@ -67,8 +68,8 @@ void loop() {
     delay(1000);
     if(digitalRead(BUTTON_PIN) == LOW){
       showType++;
-      if (showType > 9) showType=0;
-      //eeprom save
+      if (showType > 10) showType=0;
+      EEPROM.write(0, showType);
     }
   }
   startShow(showType);
@@ -97,7 +98,9 @@ void startShow(int i) {
             break;
     case 9: theaterChaseRainbow(50);
             break;
-    case 10:   SawtoothColorChanger(100);
+    case 10:SawtoothColorChanger(100);
+            break;
+    default:showType=0;
             break;
   }
 }
