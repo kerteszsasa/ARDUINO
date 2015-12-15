@@ -43,6 +43,9 @@ void RGB_put(int r, int g, int b){
   uint32_t red =r;
   uint32_t green =g;
   uint32_t blue =b;
+
+  blue= blue*90;
+  blue= blue/100;
   
   analogWrite(RGB_R, red);
   analogWrite(RGB_G, green);
@@ -86,6 +89,7 @@ void button_read(){
 
   if(digitalRead(BUTTON)==0 && button_prev_state == 1){   // press now , not pressed before         pressed now
      button_prev_state = digitalRead(BUTTON);
+     delay(300);
     return;
   }
 
