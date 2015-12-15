@@ -226,6 +226,7 @@ void setup() {
   pinMode(RGB_G, OUTPUT);
   pinMode(RGB_B, OUTPUT);
   pinMode(BUTTON, INPUT); 
+  analogWriteFreq(200);
  /* analogWrite(RGB_R, Brightness_R);
   analogWrite(RGB_G, Brightness_G);
   analogWrite(RGB_B, Brightness_B);  */
