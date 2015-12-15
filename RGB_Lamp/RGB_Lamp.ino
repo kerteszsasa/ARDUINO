@@ -21,9 +21,10 @@ void setup() {
   pinMode(RGB_G, OUTPUT);
   pinMode(RGB_B, OUTPUT);
   pinMode(BUTTON, INPUT); 
-  analogWrite(RGB_R, Brightness_R);
+ /* analogWrite(RGB_R, Brightness_R);
   analogWrite(RGB_G, Brightness_G);
-  analogWrite(RGB_B, Brightness_B);  
+  analogWrite(RGB_B, Brightness_B);  */
+  RGB_put(Brightness_R, Brightness_G, Brightness_B);
 
   Serial.println("***");
   Serial.println("***");
@@ -36,6 +37,16 @@ void loop() {
          delay(20);      //delay 20 ms
          button_read();
            
+}
+
+void RGB_put(int r, int g, int b){
+  uint32_t red =r;
+  uint32_t green =g;
+  uint32_t blue =b;
+  
+  analogWrite(RGB_R, red);
+  analogWrite(RGB_G, green);
+  analogWrite(RGB_B, blue); 
 }
 
 
@@ -66,9 +77,10 @@ void button_read(){
       }
     }
     button_press_counter = 0;
-    analogWrite(RGB_R, Brightness_R);
+    /*analogWrite(RGB_R, Brightness_R);
     analogWrite(RGB_G, Brightness_G);
-    analogWrite(RGB_B, Brightness_B);
+    analogWrite(RGB_B, Brightness_B);*/
+    RGB_put(Brightness_R, Brightness_G, Brightness_B);
     return;
   }
 
@@ -111,9 +123,10 @@ void button_read(){
       Brightness_B = 1023;
       fade_UP_down = 0;
     }
-    analogWrite(RGB_R, Brightness_R);
+    /*analogWrite(RGB_R, Brightness_R);
     analogWrite(RGB_G, Brightness_G);
-    analogWrite(RGB_B, Brightness_B);  
+    analogWrite(RGB_B, Brightness_B);*/
+    RGB_put(Brightness_R, Brightness_G, Brightness_B);  
   }
 
   void brightness_minus(){        
@@ -135,9 +148,10 @@ void button_read(){
       Brightness_B = 0;
       fade_UP_down = 1;
     }
-    analogWrite(RGB_R, Brightness_R);
+    /*analogWrite(RGB_R, Brightness_R);
     analogWrite(RGB_G, Brightness_G);
-    analogWrite(RGB_B, Brightness_B);
+    analogWrite(RGB_B, Brightness_B);*/
+    RGB_put(Brightness_R, Brightness_G, Brightness_B);
   }
 
 
