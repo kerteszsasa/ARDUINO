@@ -6,8 +6,8 @@ extern "C"
   #include "user_interface.h" 
 }
 int status = WL_IDLE_STATUS;
-const char* ssid = "HEGEHOG";  //  your network SSID (name)
-const char* pass = "aplusscsincsillaalegpuhabb";   // your network password
+const char* ssid = "AndroidAP";  //  your network SSID (name)
+const char* pass = "12345678";   // your network password
 unsigned int localPort = 2390;    // local port to listen for UDP packets
 IPAddress ipMulti (192,168,1,255);
 byte packetBuffer[512]; //buffer to hold incoming and outgoing packets
@@ -164,6 +164,7 @@ void button_read(){
   }
 
   if(digitalRead(BUTTON)==1 && button_prev_state == 0){   //not press now , pressed before          released now
+     delay(300);
      button_prev_state = digitalRead(BUTTON);
      fade_UP_down = ! fade_UP_down;
     if(button_press_counter < 100){
@@ -192,7 +193,6 @@ void button_read(){
 
   if(digitalRead(BUTTON)==0 && button_prev_state == 1){   // press now , not pressed before         pressed now
      button_prev_state = digitalRead(BUTTON);
-     delay(300);
     return;
   }
 
