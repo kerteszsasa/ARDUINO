@@ -32,7 +32,7 @@ void loop()
     Serial.print("Got data: ");
     Serial.println(value);
     //analogWrite(5, value);
-     val = map(value, 0, 255, 0, 180);     // scale it to use it with the servo (value between 0 and 180)
+     val = map(value, 0, 255, 45, 165);     // scale it to use it with the servo (value between 0 and 180)
      myservo.write(val); 
   }
 }
