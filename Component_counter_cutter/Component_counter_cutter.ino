@@ -1,12 +1,15 @@
 
 //******DEFINE HW PINS******//
 // STEPPER MOTOR PINS: connected to a shift register
-#define SHIFTREG_dataPin            10        //Pin connected to Data  pin (DS)    of 74HC595
-#define SHIFTREG_latchPin           9        //Pin connected to latch pin (ST_CP) of 74HC595
-#define SHIFTREG_clockPin           A0       //Pin connected to clock pin (SH_CP) of 74HC595
+#define SHIFTREG_dataPin          10        //Pin connected to Data  pin (DS)    of 74HC595
+#define SHIFTREG_latchPin         9        //Pin connected to latch pin (ST_CP) of 74HC595
+#define SHIFTREG_clockPin         A0       //Pin connected to clock pin (SH_CP) of 74HC595
 // STEPPER SPEEDS
-#define SPEED_STRIP_MANUAL_SLOW     100
-#define SPEED_STRIP_MANUAL_FAST     50
+#define SPEED_STRIP_MANUAL_SLOW   100
+#define SPEED_STRIP_MANUAL_FAST   50
+#define SPPED_STRIP_AUTO          300
+#define SPEED_CUTTER              200
+#define CUTTER_STEPS              200
 // LCD PINS
 #define LCD_RS_PIN                12
 #define LCD_EN_PIN                11
@@ -18,9 +21,9 @@
 #define ENCODER_PIN_A             2
 #define ENCODER_PIN_B             3
 // SENSOR PINS
-#define SENSOR_COMPONENT_HOLES
-#define SENSOR_COMPONENT_IN_POSITION
-#define CUTTER_END_POSITION
+#define SENSOR_COMPONENT_HOLES    ?
+#define SENSOR_COMPONENT_VALID    ?
+#define CUTTER_END_POSITION       ?
 // BUTTON PINS
 #define BUTTON_START              A4
 #define BUTTON_BACK               A5
@@ -33,6 +36,14 @@ LiquidCrystal lcd(LCD_RS_PIN, LCD_EN_PIN, LCD_D4_PIN, LCD_D5_PIN, LCD_D6_PIN, LC
 long encoderValue = 0;
 long encoderValuePrev = 0;
 
+long component_to_cut = 0;
+long component_repeat_times = 0;
+long component_rutted = 0;
+long component_repeated = 0;
+
+long actual_cut = 0;
+long actual_repeat = 0;
+
 int STEPPER_STRIP_STATE = 1;
 int STEPPER_BLDE_STATE = 1;
 
@@ -40,18 +51,20 @@ int STEPPER_BLDE_STATE = 1;
 //******STATES******//
 int MENU_STATE = 0;
 int LCD_REFRESH = 1;
-#define MENU_ROOT_AUTO              0
-#define MENU_ROOT_MANUAL            1
-#define MENU_MANUAL_LEFT            2
-#define MENU_MANUAL_LEFT_FAST         3
-#define MENU_MANUAL_RIGHT           4
-#define MENU_MANUAL_RIGHT_FAST          5
-#define MENU_AUTO_????               6
-#define MENU_SET_COMPONENT            7
-#define MENU_SET_REPEAT             8
-#define MENU_WORKING              9
+#define MENU_ROOT_AUTO             0
+#define MENU_ROOT_MANUAL           1
+#define MENU_MANUAL_LEFT           2
+#define MENU_MANUAL_LEFT_FAST      3
+#define MENU_MANUAL_RIGHT          4
+#define MENU_MANUAL_RIGHT_FAST     5
+#define MENU_SET_COMPONENT         6
+#define MENU_SET_REPEAT            7
+#define MENU_WORKING               8
+#define MENU_FINISHED              9
+#define MENU_PAUSE                 10
+#define MENU_NO_MORE_COMPONENT     11
 
-#define TODO                  255
+#define TODO                       255
 
 int menu_default_state = 0;
 int menu_manual_state = 3;
@@ -87,7 +100,7 @@ void loop() {
   switch (MENU_STATE) {
     case MENU_ROOT_AUTO:{
       if(LCD_REFRESH){
-    lcd.clear();
+        lcd.clear();
         lcd.setCursor(0, 0);
         lcd.print("AUTO      MANUAL");
         lcd.setCursor(0, 1);
@@ -104,8 +117,9 @@ void loop() {
         LCD_REFRESH =1;
       }
       if( pressedSartButton() ){
-        MENU_STATE = TODO;
+        MENU_STATE = MENU_SET_COMPONENT;
         LCD_REFRESH =1;
+        encoderValuePrev = encoderValue = 0;
       }
       if( pressedBackButton() ){
         MENU_STATE = MENU_ROOT_AUTO;
@@ -116,7 +130,7 @@ void loop() {
   
     case MENU_ROOT_MANUAL:{
       if(LCD_REFRESH){
-    lcd.clear();
+        lcd.clear();
         lcd.setCursor(0, 0);
         lcd.print("AUTO      MANUAL");
         lcd.setCursor(0, 1);
@@ -148,7 +162,7 @@ void loop() {
     case MENU_MANUAL_LEFT:{
       if(LCD_REFRESH){
         lcd.clear();
-    lcd.setCursor(0, 0);
+        lcd.setCursor(0, 0);
         lcd.print("<<<  <<  >>  >>>");
         lcd.setCursor(0, 1);
         lcd.print("     **         ");
@@ -168,7 +182,7 @@ void loop() {
       if( pressedSartButton() ){
         MENU_STATE = MENU_MANUAL_LEFT;
         LCD_REFRESH =1;
-    stepperStripLeft(SPEED_STRIP_MANUAL_SLOW);
+        stepperStripLeft(SPEED_STRIP_MANUAL_SLOW);
       }
       if( pressedBackButton() ){
         MENU_STATE = MENU_ROOT_MANUAL;
@@ -180,7 +194,7 @@ void loop() {
       case MENU_MANUAL_LEFT_FAST:{
       if(LCD_REFRESH){
         lcd.clear();
-    lcd.setCursor(0, 0);
+        lcd.setCursor(0, 0);
         lcd.print("<<<  <<  >>  >>>");
         lcd.setCursor(0, 1);
         lcd.print("***             ");
@@ -200,7 +214,7 @@ void loop() {
       if( pressedSartButton() ){
         MENU_STATE = MENU_MANUAL_LEFT_FAST;
         LCD_REFRESH =1;
-    stepperStripLeft(SPEED_STRIP_MANUAL_FAST);
+        stepperStripLeft(SPEED_STRIP_MANUAL_FAST);
       }
       if( pressedBackButton() ){
         MENU_STATE = MENU_ROOT_MANUAL;
@@ -212,7 +226,7 @@ void loop() {
   case MENU_MANUAL_RIGHT:{
       if(LCD_REFRESH){
         lcd.clear();
-    lcd.setCursor(0, 0);
+        lcd.setCursor(0, 0);
         lcd.print("<<<  <<  >>  >>>");
         lcd.setCursor(0, 1);
         lcd.print("         **     ");
@@ -232,7 +246,7 @@ void loop() {
       if( pressedSartButton() ){
         MENU_STATE = MENU_MANUAL_RIGHT;
         LCD_REFRESH =1;
-    stepperStripRight(SPEED_STRIP_MANUAL_SLOW);
+        stepperStripRight(SPEED_STRIP_MANUAL_SLOW);
       }
       if( pressedBackButton() ){
         MENU_STATE = MENU_ROOT_MANUAL;
@@ -244,7 +258,7 @@ void loop() {
   case MENU_MANUAL_RIGHT_FAST:{
       if(LCD_REFRESH){
         lcd.clear();
-    lcd.setCursor(0, 0);
+        lcd.setCursor(0, 0);
         lcd.print("<<<  <<  >>  >>>");
         lcd.setCursor(0, 1);
         lcd.print("             ***");
@@ -264,7 +278,7 @@ void loop() {
       if( pressedSartButton() ){
         MENU_STATE = MENU_MANUAL_RIGHT_FAST;
         LCD_REFRESH =1;
-    stepperStripRight(SPEED_STRIP_MANUAL_FAST);
+        stepperStripRight(SPEED_STRIP_MANUAL_FAST);
       }
       if( pressedBackButton() ){
         MENU_STATE = MENU_ROOT_MANUAL;
@@ -272,14 +286,178 @@ void loop() {
       }
       break;
     }
+  
+  case MENU_SET_COMPONENT:{
+      if(LCD_REFRESH){
+        lcd.clear();
+        lcd.setCursor(0, 0);
+        lcd.print("COMPONET NUMBER:");
+        lcd.setCursor(0, 1);
+        lcd.print(encoderValue);
+        LCD_REFRESH =0;
+        encoderValuePrev = encoderValue;
+      }
+      if( encoderValue > encoderValuePrev)
+      {
+        MENU_STATE = MENU_SET_COMPONENT;
+        LCD_REFRESH =1;
+      }
+      if( encoderValue < encoderValuePrev)
+      {
+        MENU_STATE = MENU_SET_COMPONENT;
+        LCD_REFRESH =1;
+      }
+      if( pressedSartButton() ){
+        MENU_STATE = MENU_SET_REPEAT;
+        LCD_REFRESH =1;
+        component_to_cut = encoderValue;
+        encoderValuePrev = encoderValue = 0;
+    }
+      if( pressedBackButton() ){
+        MENU_STATE = MENU_ROOT_AUTO;
+        LCD_REFRESH =1;
+      }
+      break;
+    }
+  
+  case MENU_SET_REPEAT:{
+      if(LCD_REFRESH){
+        lcd.clear();
+        lcd.setCursor(0, 0);
+        lcd.print("REPEAT TIMES:");
+        lcd.setCursor(0, 1);
+        lcd.print(encoderValue);
+        LCD_REFRESH =0;
+        encoderValuePrev = encoderValue;
+      }
+      if( encoderValue > encoderValuePrev)
+      {
+        MENU_STATE = MENU_SET_REPEAT;
+        LCD_REFRESH =1;
+      }
+      if( encoderValue < encoderValuePrev)
+      {
+        MENU_STATE = MENU_SET_REPEAT;
+        LCD_REFRESH =1;
+      }
+      if( pressedSartButton() ){
+        MENU_STATE = MENU_WORKING;
+        LCD_REFRESH =1;
+        component_repeat_times = encoderValue;
+        encoderValuePrev = encoderValue = 0;
+      }
+      if( pressedBackButton() ){
+        MENU_STATE = MENU_ROOT_AUTO;
+        LCD_REFRESH =1;
+      }
+      break;
+    }
     
-    
+    case MENU_WORKING:{
+      if(LCD_REFRESH){
+        lcd.clear();
+        lcd.setCursor(0, 0);
+        lcd.print("SET: ");
+        lcd.print(component_to_cut);
+        lcd.print(" ");
+        lcd.print(component_repeat_times);
+        lcd.setCursor(0, 1);
+        lcd.print("NOW: ");
+        lcd.print(actual_cut);
+        lcd.print(" ");
+        lcd.print(actual_repeat);
+        LCD_REFRESH =0;
+        encoderValuePrev = encoderValue;
+      }
+      if( pressedSartButton() ){
+        MENU_STATE = MENU_PAUSE;
+        LCD_REFRESH =1;
+      }
+      if( pressedBackButton() ){
+        MENU_STATE = MENU_PAUSE;
+        LCD_REFRESH =1;
+      }
+      component_move_count_cut();
+      break;
+    }
+  
+  case MENU_PAUSE:{
+      if(LCD_REFRESH){
+        lcd.clear();
+        lcd.setCursor(0, 0);
+        lcd.print("PAUSED");
+        lcd.setCursor(0, 1);
+        lcd.print("NOW: ");
+        lcd.print(actual_cut);
+        lcd.print(" ");
+        lcd.print(actual_repeat);
+        LCD_REFRESH =0;
+        encoderValuePrev = encoderValue;
+      }
+      if( pressedSartButton() ){
+        MENU_STATE = MENU_WORKING;
+        LCD_REFRESH =1;
+      }
+      if( pressedBackButton() ){
+        MENU_STATE = MENU_ROOT_AUTO;
+        LCD_REFRESH =1;
+      }
+      break;
+    }
+  
+  case MENU_FINISHED:{
+      if(LCD_REFRESH){
+        lcd.clear();
+        lcd.setCursor(0, 0);
+        lcd.print("FINISHED");
+        lcd.setCursor(0, 1);
+        lcd.print("NOW: ");
+        lcd.print(actual_cut);
+        lcd.print(" ");
+        lcd.print(actual_repeat);
+        LCD_REFRESH =0;
+        encoderValuePrev = encoderValue;
+      }
+      if( pressedSartButton() ){
+        MENU_STATE = MENU_ROOT_AUTO;
+        LCD_REFRESH =1;
+      }
+      if( pressedBackButton() ){
+        MENU_STATE = MENU_ROOT_AUTO;
+        LCD_REFRESH =1;
+      }
+      break;
+    }
+  
+  case MENU_NO_MORE_COMPONENT:{
+      if(LCD_REFRESH){
+        lcd.clear();
+        lcd.setCursor(0, 0);
+        lcd.print("NO MORE COMPONENT");
+        lcd.setCursor(0, 1);
+        lcd.print("NOW: ");
+        lcd.print(actual_cut);
+        lcd.print(" ");
+        lcd.print(actual_repeat);
+        LCD_REFRESH =0;
+        encoderValuePrev = encoderValue;
+      }
+      if( pressedSartButton() ){
+        MENU_STATE = MENU_ROOT_AUTO;
+        LCD_REFRESH =1;
+      }
+      if( pressedBackButton() ){
+        MENU_STATE = MENU_ROOT_AUTO;
+        LCD_REFRESH =1;
+      }
+      break;
+    }
     
     
     case TODO:{
       if(LCD_REFRESH){
         lcd.clear();
-    lcd.setCursor(0, 0);
+        lcd.setCursor(0, 0);
         lcd.print("TODO");
         lcd.setCursor(0, 1);
         lcd.print("TODO");
@@ -326,6 +504,15 @@ void INT_B() {
   delay(1);
 }
 
+void component_move_count_cut(){
+  if( readSensorComponentInPosition() ){
+    MENU_STATE = MENU_NO_MORE_COMPONENT;
+        LCD_REFRESH =1;
+    return;
+  }
+  TODO
+}
+
 
 int pressedSartButton(){
   int value = !digitalRead(BUTTON_START);
@@ -357,6 +544,15 @@ int readSensorCutterEndPosition(){
   return 0;
 }
 
+void cutter_cut(){
+  for(int i=0; i < CUTTER_STEPS; i++){
+    stepperCutterLeft(SPEED_CUTTER);
+  }
+  while( readSensorCutterEndPosition() ){
+    stepperCutterRight(SPEED_CUTTER);
+  }
+}
+
 void stepperStripLeft(int speed){
   while( !digitalRead(BUTTON_START) ){
   registerWrite(STEPPER_STRIP_STATE);
@@ -377,11 +573,37 @@ void stepperStripRight(int speed){
   }
 }
 
+void stepperCutterLeft(int speed){
+  while( !digitalRead(BUTTON_START) ){
+  registerWrite(STEPPER_BLDE_STATE<<4);
+  delay(speed);
+  registerWrite(0);
+  STEPPER_BLDE_STATE*=2;
+  if(STEPPER_BLDE_STATE >8) STEPPER_BLDE_STATE = 1;
+  }
+}
+
+void stepperCutterRight(int speed){
+  while( !digitalRead(BUTTON_START) ){
+  registerWrite(STEPPER_BLDE_STATE<<4);
+  delay(speed);
+  registerWrite(0);
+  STEPPER_BLDE_STATE/=2;
+  if(STEPPER_BLDE_STATE < 1) STEPPER_BLDE_STATE = 8;
+  }
+}
+
 // This method sends bits to the shift register:
 void registerWrite(int data) {
   digitalWrite(SHIFTREG_latchPin, LOW);
   shiftOut(SHIFTREG_dataPin, SHIFTREG_clockPin, MSBFIRST, data);
   digitalWrite(SHIFTREG_latchPin, HIGH);
 }
+
+
+
+
+
+
 
 
