@@ -87,8 +87,8 @@ void setup() {
   pinMode(ENCODER_PIN_B, INPUT);
   digitalWrite(ENCODER_PIN_A, HIGH);
   digitalWrite(ENCODER_PIN_B, HIGH);
-  attachInterrupt(digitalPinToInterrupt(ENCODER_PIN_A), INT_A, FALLING); 
-  attachInterrupt(digitalPinToInterrupt(ENCODER_PIN_B), INT_B, FALLING);  
+  attachInterrupt(digitalPinToInterrupt(ENCODER_PIN_A), INT_A, RISING); 
+  attachInterrupt(digitalPinToInterrupt(ENCODER_PIN_B), INT_B, RISING);  
 
   lcd.begin(16, 2);
   Serial.begin(9600);
@@ -496,12 +496,15 @@ void loop() {
 }
 
 void INT_A() {
+    if(digitalRead(ENCODER_PIN_B))
     encoderValue++;
+  else
+    encoderValue--;
   delay(1);
 }
 void INT_B() {
-  encoderValue--;
-  delay(1);
+ // encoderValue--;
+  //delay(1);
 }
 
 void component_move_count_cut(){
@@ -510,7 +513,7 @@ void component_move_count_cut(){
         LCD_REFRESH =1;
     return;
   }
-  TODO
+  //TODO
 }
 
 
@@ -599,6 +602,7 @@ void registerWrite(int data) {
   shiftOut(SHIFTREG_dataPin, SHIFTREG_clockPin, MSBFIRST, data);
   digitalWrite(SHIFTREG_latchPin, HIGH);
 }
+
 
 
 
