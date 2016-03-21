@@ -9,7 +9,7 @@
 #define SPEED_STRIP_MANUAL_FAST   50
 #define SPPED_STRIP_AUTO          300
 #define SPEED_CUTTER              200
-#define CUTTER_STEPS              200
+#define CUTTER_STEPS              8
 // LCD PINS
 #define LCD_RS_PIN                12
 #define LCD_EN_PIN                11
@@ -47,6 +47,8 @@ long actual_repeat = 0;
 int STEPPER_STRIP_STATE = 1;
 int STEPPER_BLDE_STATE = 1;
 
+int component_hole_prev_value = 0;
+
 
 //******STATES******//
 int MENU_STATE = 0;
@@ -62,7 +64,7 @@ int LCD_REFRESH = 1;
 #define MENU_WORKING               8
 #define MENU_FINISHED              9
 #define MENU_PAUSE                 10
-#define MENU_NO_MORE_COMPONENT     11
+#define MENU_EMPTY_COMPONENT     11
 
 #define TODO                       255
 
@@ -96,7 +98,7 @@ void setup() {
 }
 
 void loop() {
-  Serial.println(encoderValue);
+  Serial.println(MENU_STATE);
   switch (MENU_STATE) {
     case MENU_ROOT_AUTO:{
       if(LCD_REFRESH){
@@ -119,7 +121,7 @@ void loop() {
       if( pressedSartButton() ){
         MENU_STATE = MENU_SET_COMPONENT;
         LCD_REFRESH =1;
-        encoderValuePrev = encoderValue = 0;
+        encoderValuePrev = encoderValue = 1;
       }
       if( pressedBackButton() ){
         MENU_STATE = MENU_ROOT_AUTO;
@@ -182,7 +184,9 @@ void loop() {
       if( pressedSartButton() ){
         MENU_STATE = MENU_MANUAL_LEFT;
         LCD_REFRESH =1;
-        stepperStripLeft(SPEED_STRIP_MANUAL_SLOW);
+        while( !digitalRead(BUTTON_START) ){
+          stepperStripLeft(SPEED_STRIP_MANUAL_SLOW);
+        }
       }
       if( pressedBackButton() ){
         MENU_STATE = MENU_ROOT_MANUAL;
@@ -214,7 +218,9 @@ void loop() {
       if( pressedSartButton() ){
         MENU_STATE = MENU_MANUAL_LEFT_FAST;
         LCD_REFRESH =1;
-        stepperStripLeft(SPEED_STRIP_MANUAL_FAST);
+        while( !digitalRead(BUTTON_START) ){
+          stepperStripLeft(SPEED_STRIP_MANUAL_FAST);
+        }
       }
       if( pressedBackButton() ){
         MENU_STATE = MENU_ROOT_MANUAL;
@@ -246,7 +252,9 @@ void loop() {
       if( pressedSartButton() ){
         MENU_STATE = MENU_MANUAL_RIGHT;
         LCD_REFRESH =1;
-        stepperStripRight(SPEED_STRIP_MANUAL_SLOW);
+        while( !digitalRead(BUTTON_START) ){
+          stepperStripRight(SPEED_STRIP_MANUAL_SLOW);
+        }
       }
       if( pressedBackButton() ){
         MENU_STATE = MENU_ROOT_MANUAL;
@@ -278,7 +286,9 @@ void loop() {
       if( pressedSartButton() ){
         MENU_STATE = MENU_MANUAL_RIGHT_FAST;
         LCD_REFRESH =1;
-        stepperStripRight(SPEED_STRIP_MANUAL_FAST);
+        while( !digitalRead(BUTTON_START) ){
+          stepperStripRight(SPEED_STRIP_MANUAL_FAST);
+        }
       }
       if( pressedBackButton() ){
         MENU_STATE = MENU_ROOT_MANUAL;
@@ -289,6 +299,7 @@ void loop() {
   
   case MENU_SET_COMPONENT:{
       if(LCD_REFRESH){
+        if(encoderValue < 0) encoderValue = 0;
         lcd.clear();
         lcd.setCursor(0, 0);
         lcd.print("COMPONET NUMBER:");
@@ -311,7 +322,7 @@ void loop() {
         MENU_STATE = MENU_SET_REPEAT;
         LCD_REFRESH =1;
         component_to_cut = encoderValue;
-        encoderValuePrev = encoderValue = 0;
+        encoderValuePrev = encoderValue = 1;
     }
       if( pressedBackButton() ){
         MENU_STATE = MENU_ROOT_AUTO;
@@ -322,6 +333,7 @@ void loop() {
   
   case MENU_SET_REPEAT:{
       if(LCD_REFRESH){
+        if(encoderValue < 0) encoderValue = 0;
         lcd.clear();
         lcd.setCursor(0, 0);
         lcd.print("REPEAT TIMES:");
@@ -345,6 +357,7 @@ void loop() {
         LCD_REFRESH =1;
         component_repeat_times = encoderValue;
         encoderValuePrev = encoderValue = 0;
+        actual_cut = actual_repeat = 0;
       }
       if( pressedBackButton() ){
         MENU_STATE = MENU_ROOT_AUTO;
@@ -429,11 +442,11 @@ void loop() {
       break;
     }
   
-  case MENU_NO_MORE_COMPONENT:{
+  case MENU_EMPTY_COMPONENT:{
       if(LCD_REFRESH){
         lcd.clear();
         lcd.setCursor(0, 0);
-        lcd.print("NO MORE COMPONENT");
+        lcd.print("EMPTY COMPONENT");
         lcd.setCursor(0, 1);
         lcd.print("NOW: ");
         lcd.print(actual_cut);
@@ -487,7 +500,6 @@ void loop() {
       
 
     default:
-      Serial.println("bright");
       break;
   }
 
@@ -503,17 +515,32 @@ void INT_A() {
   delay(1);
 }
 void INT_B() {
- // encoderValue--;
-  //delay(1);
 }
 
 void component_move_count_cut(){
+  if(component_to_cut == 0 && component_repeat_times == 0){
+        MENU_STATE = MENU_FINISHED;
+        LCD_REFRESH =1;
+        return;
+  }
   if( readSensorComponentInPosition() ){
-    MENU_STATE = MENU_NO_MORE_COMPONENT;
+    MENU_STATE = MENU_EMPTY_COMPONENT;
         LCD_REFRESH =1;
     return;
+  }else{
+    getCountedComponents();
+    stepperStripLeft(SPPED_STRIP_AUTO);
+    if(actual_cut == component_to_cut){
+      cutter_cut();
+      actual_cut = 0;
+      actual_repeat ++;
+    }
+    if(actual_repeat == component_repeat_times){
+        MENU_STATE = MENU_FINISHED;
+        LCD_REFRESH =1;
+    }
   }
-  //TODO
+ 
 }
 
 
@@ -531,16 +558,16 @@ int pressedBackButton(){
   return value;
 }
 
-int getCountedComponents(){
-  return 0;
-}
-
-int readSensorComponentHoles(){
-  return 0;
+void getCountedComponents(){
+ /* if( component_hole_prev_value==0 && digitalRead(SENSOR_COMPONENT_HOLES)==1){ TODO
+    actual_cut ++;
+    LCD_REFRESH =1;
+  }
+  component_hole_prev_value = digitalRead(SENSOR_COMPONENT_HOLES); */
 }
 
 int readSensorComponentInPosition(){
-  return 0;
+  return 0; //digitalRead(MENU_NO_MORE_COMPONENT); TODO
 }
 
 int readSensorCutterEndPosition(){
@@ -557,43 +584,35 @@ void cutter_cut(){
 }
 
 void stepperStripLeft(int speed){
-  while( !digitalRead(BUTTON_START) ){
   registerWrite(STEPPER_STRIP_STATE);
   delay(speed);
   registerWrite(0);
   STEPPER_STRIP_STATE*=2;
   if(STEPPER_STRIP_STATE >8) STEPPER_STRIP_STATE = 1;
-  }
 }
 
 void stepperStripRight(int speed){
-  while( !digitalRead(BUTTON_START) ){
   registerWrite(STEPPER_STRIP_STATE);
   delay(speed);
   registerWrite(0);
   STEPPER_STRIP_STATE/=2;
   if(STEPPER_STRIP_STATE < 1) STEPPER_STRIP_STATE = 8;
-  }
 }
 
 void stepperCutterLeft(int speed){
-  while( !digitalRead(BUTTON_START) ){
   registerWrite(STEPPER_BLDE_STATE<<4);
   delay(speed);
   registerWrite(0);
   STEPPER_BLDE_STATE*=2;
   if(STEPPER_BLDE_STATE >8) STEPPER_BLDE_STATE = 1;
-  }
 }
 
 void stepperCutterRight(int speed){
-  while( !digitalRead(BUTTON_START) ){
   registerWrite(STEPPER_BLDE_STATE<<4);
   delay(speed);
   registerWrite(0);
   STEPPER_BLDE_STATE/=2;
   if(STEPPER_BLDE_STATE < 1) STEPPER_BLDE_STATE = 8;
-  }
 }
 
 // This method sends bits to the shift register:
