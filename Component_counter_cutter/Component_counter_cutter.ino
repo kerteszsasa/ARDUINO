@@ -21,9 +21,9 @@
 #define ENCODER_PIN_A             2
 #define ENCODER_PIN_B             3
 // SENSOR PINS
-#define SENSOR_COMPONENT_HOLES    ?
-#define SENSOR_COMPONENT_VALID    ?
-#define CUTTER_END_POSITION       ?
+#define SENSOR_COMPONENT_HOLES    A1
+#define SENSOR_COMPONENT_VALID    A2
+#define CUTTER_END_POSITION       A3
 // BUTTON PINS
 #define BUTTON_START              A4
 #define BUTTON_BACK               A5
@@ -559,19 +559,19 @@ int pressedBackButton(){
 }
 
 void getCountedComponents(){
- /* if( component_hole_prev_value==0 && digitalRead(SENSOR_COMPONENT_HOLES)==1){ TODO
+  if( component_hole_prev_value==0 && digitalRead(SENSOR_COMPONENT_HOLES)==1){
     actual_cut ++;
     LCD_REFRESH =1;
   }
-  component_hole_prev_value = digitalRead(SENSOR_COMPONENT_HOLES); */
+  component_hole_prev_value = digitalRead(SENSOR_COMPONENT_HOLES); 
 }
 
 int readSensorComponentInPosition(){
-  return 0; //digitalRead(MENU_NO_MORE_COMPONENT); TODO
+  return digitalRead(SENSOR_COMPONENT_VALID);
 }
 
 int readSensorCutterEndPosition(){
-  return 0;
+  return digitalRead(CUTTER_END_POSITION);
 }
 
 void cutter_cut(){
