@@ -17,8 +17,7 @@ int MODE_RECEIEVER = 0;
 int MODE_TRANSMITTER = 0;
 
 char battery_response[5];
-char gas_response[6];
-int GAS_value = 0;
+
 int SURF_speed = 0;
 
 int cycle_divider = 0;
@@ -91,8 +90,8 @@ void loop() {
 
 
 void Transmitter_function(){
-    read_gas();
-    RF_send(BASE_ADDRESS, gas_response);
+
+    RF_sendString(BASE_ADDRESS, read_gas() );
 }
 
 void Receiever_function(){
@@ -132,17 +131,11 @@ void RF_handling(){
       }
     }
     if( str.indexOf("GETGAS")==0 ){
-      if(MODE_TRANSMITTER){
-        read_gas();
-        RF_send(BASE_ADDRESS, gas_response);
-      }
-      else{
-        RF_send(BASE_ADDRESS, "NOT VALID COMMAND");
-      }
+      debug( read_gas() );
     }
     if( str.indexOf("WHO?")==0 ){
-      RF_send(BASE_ADDRESS, "HELLO I AM HERO");
-      MODE_TRANSMITTER ? RF_send(BASE_ADDRESS, "transmitter") : RF_send(BASE_ADDRESS, "receiver");
+      MODE_TRANSMITTER ? debug("TRANSMITTER") : debug("RECEIEVER");
+      debug("MY ADDRESS: ?????");
     }
     if( str.indexOf("R1")==0 ){
       digitalWrite(RED, LOW);
@@ -164,14 +157,37 @@ void RF_handling(){
     }
     if( str.indexOf("TEST")==0 ){
       debug("this is a message");
+      RF_sendString(BASE_ADDRESS,"this is a string");
     }
     //Finally reset the buffer
     memset(nrf_buffer, 0, sizeof(nrf_buffer));
 }
 
+
+
+void RF_init(void){
+  Mirf.spi = &MirfHardwareSpi;
+  Mirf.init();
+  // Set own address - unique 5 character string
+  Mirf.setRADDR((byte *)RECEIVE_ADDRESS);
+  Mirf.payload = BUFFER_SIZE;
+  Mirf.channel = 90;
+  Mirf.config(); 
+}
+
 void RF_send(char* address, char* data){
     Mirf.setTADDR((byte *) address);
     Mirf.send((byte *) data);
+    while(Mirf.isSending()) delay(1);  
+}
+void RF_sendString(char* address, String str){
+
+   if(str.length() > BUFFER_SIZE-1) str = "TOO LONG STRING";
+  char TMP_buffer[BUFFER_SIZE];
+  str.toCharArray(TMP_buffer, BUFFER_SIZE);
+
+    Mirf.setTADDR((byte *) address);
+    Mirf.send((byte *) TMP_buffer);
     while(Mirf.isSending()) delay(1);  
 }
 
@@ -185,30 +201,21 @@ int RF_incoming(void){
   
 }
 
-void RF_init(void){
-  Mirf.spi = &MirfHardwareSpi;
-  Mirf.init();
-  // Set own address - unique 5 character string
-  Mirf.setRADDR((byte *)RECEIVE_ADDRESS);
-  Mirf.payload = BUFFER_SIZE;
-  Mirf.channel = 90;
-  Mirf.config(); 
-}
+
 
 void panel_identify(){
     long rx_or_tx =0;
     analogRead(A6);
     delay(500);
-  rx_or_tx += analogRead(A6);
-  rx_or_tx += analogRead(A6);
-  rx_or_tx += analogRead(A6);
-  rx_or_tx += analogRead(A6);
-
-  if(rx_or_tx > 2048){
-    MODE_TRANSMITTER = 1;
-  }else{
-    MODE_RECEIEVER = 1;
-  }
+    rx_or_tx += analogRead(A6);
+    rx_or_tx += analogRead(A6);
+    rx_or_tx += analogRead(A6);
+    rx_or_tx += analogRead(A6);
+    if(rx_or_tx > 2048){
+      MODE_TRANSMITTER = 1;
+    }else{
+      MODE_RECEIEVER = 1;
+    }
 }
 
 void read_battery(){
@@ -236,23 +243,19 @@ String str(batt);
  battery_response[4] = 'V';
 }
 
-void read_gas(){
+String read_gas(){
    analogRead(GAS_PIN);
- float value = analogRead(GAS_PIN);
- value += analogRead(GAS_PIN);
- value += analogRead(GAS_PIN);
- value += analogRead(GAS_PIN);
- value /=4;
- // make it between 0 and 100
- //TODO
- GAS_value = value/4;
-
-String str(GAS_value);
-str+='%';
- gas_response[0] = str[0];
- gas_response[1] = str[1];
- gas_response[2] = str[2];
- gas_response[3] = str[3];
+   int value = analogRead(GAS_PIN);
+   value += analogRead(GAS_PIN);
+   value += analogRead(GAS_PIN);
+   value += analogRead(GAS_PIN);
+   value /=4;
+   // make it between 0 and 100
+   //TODO
+   String str(value);
+   if(MODE_TRANSMITTER) return str;
+   if (MODE_RECEIEVER) return "NOT A TRANSMITTER";
+   
 }
 
 void read_EEprom_address(){
@@ -275,9 +278,10 @@ void debug(int num){
 }
 
 void debug(String str){
-  if(str.length() > 19) str = "TOO LONG STRING";
+ /* if(str.length() > 19) str = "TOO LONG STRING";
   char TMP_buffer[BUFFER_SIZE];
   str.toCharArray(TMP_buffer, BUFFER_SIZE);
-  RF_send(BASE_ADDRESS, TMP_buffer);
+  RF_send(BASE_ADDRESS, TMP_buffer);*/
+  RF_sendString(BASE_ADDRESS,str);
 }
 
