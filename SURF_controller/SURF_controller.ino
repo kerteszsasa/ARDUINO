@@ -22,7 +22,7 @@ int MODE_RECEIVER = 0;
 int MODE_TRANSMITTER = 0;
 
 int SURF_speed = 0;
-int Message_TTL = 255;
+int Message_TTL = 0;
 int cycle_divider = 0;
 
 #define BUFFER_SIZE 20
@@ -32,7 +32,7 @@ String TRANSMITTER_ADDRESS = ".....";
 String RECEIVER_ADDRESS = "-----";
 String WAT_FOR_ADDRESS = "?????";
 
-
+Servo myservo;  // create servo object to control a servo
 
 
 
@@ -51,15 +51,21 @@ void setup() {
   if( MODE_RECEIVER )    Init_receiver();
 
   
-  //Servo myservo;  // create servo object to control a servo
-  // myservo.attach(SERVO_PIN);  // attaches the servo on pin 5 to the servo object
+  
+   myservo.attach(SERVO_PIN);  // attaches the servo on pin 5 to the servo object
 
   //Read_From_EEPROM();
   RF_init();
   delay(1000);
-  String startup = "Connected: ";
-  if( MODE_TRANSMITTER ) startup += TRANSMITTER_ADDRESS;
-  if( MODE_RECEIVER )    startup += RECEIVER_ADDRESS;
+  String startup = "Conn: ";
+  if( MODE_TRANSMITTER ){
+    startup += "TRANS ";
+    startup += TRANSMITTER_ADDRESS;
+  }
+  if( MODE_RECEIVER ){
+    startup += "REC ";
+    startup += RECEIVER_ADDRESS;
+  }
   debug(startup);
   if( MODE_TRANSMITTER ) send_Pair_Address(RECEIVER_ADDRESS);
 
@@ -73,13 +79,13 @@ void loop() {
     RF_handling();
   }
   cycle_divider++;
-  if (cycle_divider == 500) {
+  if (cycle_divider == 50) {
     cycle_divider = 0;
     if (MODE_TRANSMITTER) {
       Transmitter_function();
     }
     if (MODE_RECEIVER) {
-     // Receiever_function();
+      Receiever_function();
     }
   }
   delay(1);
@@ -95,9 +101,11 @@ void Transmitter_function() {
  str += read_gas(); 
  //debug(str);
  //RF_sendString(RECEIVER_ADDRESS, str);
- debug(RECEIVER_ADDRESS);
- debug(TRANSMITTER_ADDRESS);
-  debug(BASE_ADDRESS);
+ //debug(RECEIVER_ADDRESS);
+ //debug(TRANSMITTER_ADDRESS);
+  //debug(BASE_ADDRESS);
+ RF_sendString(RECEIVER_ADDRESS, str);
+ debug(str);
  RF_sendString(TRANSMITTER_ADDRESS, str);
   
   
@@ -106,7 +114,16 @@ void Transmitter_function() {
 void Receiever_function() {
   //resetFunc(); //call reset 
   //debug("REC: running");
-  digitalWrite(RED, HIGH);
+
+  if(Message_TTL > 0) Message_TTL--;
+  if(Message_TTL == 0) SURF_speed = 0;
+  
+  int val = map(SURF_speed, 0, 1024, 45, 165);     // scale it to use it with the servo (value between 0 and 180)
+  myservo.write(val);
+  
+
+  
+ /* digitalWrite(RED, HIGH);
   digitalWrite(GREEN, HIGH);
   digitalWrite(BLUE, HIGH);
   if(SURF_speed > 75) digitalWrite(RED, LOW);
@@ -116,7 +133,7 @@ void Receiever_function() {
   }
    if(SURF_speed < 25 ){
     digitalWrite(GREEN, LOW);
-  }
+  }*/
 }
 
 void RF_handling() {
@@ -147,9 +164,11 @@ void RF_handling() {
     if (MODE_RECEIVER) {
       String sp = str.substring(9);
       SURF_speed = sp.toInt();
+      Message_TTL = 50;
       digitalWrite(BLUE, LOW);
       delay(2);
       digitalWrite(BLUE, HIGH);
+      //debug(SURF_speed);
     }
     else {
       debug("NOT VALID COMMAND");
@@ -204,10 +223,10 @@ void Init_transmitter(){
     delay(1000);
     digitalWrite(BLUE, HIGH);
   }
-TRANSMITTER_ADDRESS = addr.substring(0);  // Set this address to transmitter's address
-String  rec_addr = addr.substring(0);
-rec_addr.toLowerCase();
-RECEIVER_ADDRESS = rec_addr;              // Set the address's lower case version to receiver's address (the tarnsmitter send data to it)
+  TRANSMITTER_ADDRESS = addr.substring(0);  // Set this address to transmitter's address
+  String  rec_addr = addr.substring(0);
+  rec_addr.toLowerCase();
+  RECEIVER_ADDRESS = rec_addr;              // Set the address's lower case version to receiver's address (the tarnsmitter send data to it)
 }
 
 void send_Pair_Address(String str){
