@@ -107,6 +107,8 @@ void Transmitter_function() {
  RF_sendString(RECEIVER_ADDRESS, str);
  debug(str);
  RF_sendString(TRANSMITTER_ADDRESS, str);
+ digitalWrite(GREEN, LOW); // bekapcsolás jelző
+ //analogWrite(GREEN, 250);
   
   
 }
@@ -120,7 +122,8 @@ void Receiever_function() {
   
   int val = map(SURF_speed, 0, 1024, 45, 165);     // scale it to use it with the servo (value between 0 and 180)
   myservo.write(val);
-  
+  digitalWrite(GREEN, LOW); // bekapcsolás jelző
+  //analogWrite(GREEN, 1020);
 
   
  /* digitalWrite(RED, HIGH);
@@ -411,8 +414,12 @@ String read_gas() {
   value += analogRead(GAS_PIN);
   value += analogRead(GAS_PIN);
   value /= 4;
-  // make it between 0 and 100
+  // make it between 0 and 1000
   //TODO
+  //hack for hall sensor lineariaation
+  value = value - 540;
+  value = value *2;
+  //hack end
   String str(value);
   if (MODE_TRANSMITTER) return str;
   if (MODE_RECEIVER) return "NOT A TRANSMITTER";
